@@ -11,6 +11,11 @@ const external = (url) => {
   if (url.includes('open-meteo')) return { current: { temperature_2m: 30, relative_humidity_2m: 80, precipitation: 5, weather_code: 63, wind_speed_10m: 20, wind_gusts_10m: 35 }, daily: { time: ['2026-10-21'], precipitation_sum: [60], precipitation_probability_max: [90], wind_speed_10m_max: [45] } };
   if (url.includes('usgs')) return { features: [{ id: 'q1', properties: { mag: 5.1, place: 'Test', time: 1, url: 'u' }, geometry: { coordinates: [121.1, 14.7, 10] } }] };
   if (url.includes('eonet')) return { events: [{ id: 'e1', title: 'Storm', categories: [{ id: 'severeStorms', title: 'Severe Storms' }], link: 'l', geometry: [{ type: 'Point', date: 'd', coordinates: [121.5, 14.9] }] }] };
+  if (url.includes('nominatim') && url.includes('/reverse')) return { address: { city: 'Iligan', state: 'Northern Mindanao' } };
+  if (url.includes('nominatim') && url.includes('Iligan')) return [
+    { display_name: 'Iligan City, Francisco Reyes, Cavite', addresstype: 'neighbourhood', lat: '14.328', lon: '121.031' },
+    { display_name: 'Iligan, Northern Mindanao', addresstype: 'city', lat: '8.228', lon: '124.241' },
+  ];
   if (url.includes('nominatim')) return [{ display_name: 'Quezon City, Philippines', lat: '14.676', lon: '121.0437' }];
   throw new Error('unmocked ' + url);
 };
@@ -91,6 +96,15 @@ test('external endpoints + combined risk', async () => {
   assert.ok(['Moderate', 'High', 'Critical'].includes(r.body.risk.level));
   assert.strictEqual((await call('GET', '/api/external/weather?lat=abc&lon=1')).status, 400);
   assert.strictEqual((await call('GET', '/api/external/geocode?q=Manila')).body[0].lat, 14.676);
+});
+
+test('place search ranks cities above same-named streets; reverse geocode names the current city', async () => {
+  const g = await call('GET', '/api/external/geocode?q=Iligan%20City');
+  assert.strictEqual(g.body[0].label, 'Iligan, Northern Mindanao');
+  assert.strictEqual(g.body[0].lat, 8.228);
+  const r = await call('GET', '/api/external/reverse?lat=8.228&lon=124.24');
+  assert.strictEqual(r.body.label, 'Iligan, Northern Mindanao');
+  assert.strictEqual((await call('GET', '/api/external/reverse?lat=x&lon=1')).status, 400);
 });
 
 test('alert broadcast and admin dashboard stats incl. API health', async () => {
