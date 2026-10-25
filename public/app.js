@@ -100,11 +100,12 @@ async function home() {
         <div class="bar"><i style="width:${r.score}%;background:${r.color}"></i></div><p>${esc(r.advice)}</p>
         ${r.factors.length ? '<ul class="clean small">' + r.factors.map((f) => `<li>+${f.points} ${esc(f.text)}</li>`).join('') + '</ul>' : '<p class="small mut">No active hazards detected.</p>'}
         ${Object.values(d.sources).includes(false) ? '<p class="err small">Some data sources are temporarily unavailable; the score may be incomplete.</p>' : ''}
-        ${centers[0] ? `<p class="small">Nearest center: <b>${esc(centers[0].name)}</b> (${centers[0].distanceKm} km) ${pill(centers[0].status)}</p>` : ''}`;
+        ${centers[0] ? (centers[0].distanceKm <= 50 ? `<p class="small">Nearest center: <b>${esc(centers[0].name)}</b> (${centers[0].distanceKm} km) ${pill(centers[0].status)}</p>`
+          : `<p class="small err">No evacuation center registered within 50 km (closest: ${esc(centers[0].name)}, ${centers[0].distanceKm} km). Contact your barangay/LGU.</p>`) : ''}`;
       const w = d.weather;
       $('#wx').innerHTML = w ? `<h2>Weather now</h2><div class="row"><b style="font-size:26px">${w.temperature}°C</b><span>${esc(w.description)}</span></div>
-        <p class="small mut">Humidity ${w.humidity}% · Wind ${w.windSpeed} km/h (gusts ${w.windGusts}) · Rain ${w.precipitation} mm</p>
-        <table><tr><th>Day</th><th>Rain</th><th>Chance</th><th>Wind max</th></tr>${w.forecast.map((f) => `<tr><td>${esc(f.date)}</td><td>${f.rainMm} mm</td><td>${f.rainChance ?? '-'}%</td><td>${f.windMax} km/h</td></tr>`).join('')}</table>` : '<span class="err">Weather unavailable.</span>';
+        <p class="small mut">Humidity ${w.humidity}% · Wind ${w.windSpeed} km/h${w.windGusts != null ? ` (gusts ${w.windGusts})` : ''} · Rain ${w.precipitation} mm${w.source ? ` · via ${esc(w.source)}` : ''}</p>
+        <table><tr><th>Day</th><th>Rain</th><th>Chance</th><th>Wind max</th></tr>${w.forecast.map((f) => `<tr><td>${esc(f.date)}</td><td>${f.rainMm} mm</td><td>${f.rainChance != null ? f.rainChance + '%' : '—'}</td><td>${f.windMax} km/h</td></tr>`).join('')}</table>` : '<span class="err">Weather unavailable.</span>';
       $('#qk').innerHTML = d.quakes.length ? '<ul class="clean small">' + d.quakes.map((q) => `<li><b>M${q.mag}</b> ${esc(q.place)} · ${q.distanceKm} km · ${new Date(q.time).toLocaleString()}</li>`).join('') + '</ul>' : '<p class="mut">No earthquakes within 300 km this week.</p>';
       d.quakes.forEach((q) => L.circleMarker([q.lat, q.lon], { radius: 4 + q.mag * 2, color: '#c92a2a', fillOpacity: .4 }).addTo(layer).bindPopup(`M${q.mag} ${esc(q.place)}`));
       $('#ev').innerHTML = d.events.length ? '<ul class="clean small">' + d.events.map((e) => `<li><b>${esc(e.categoryTitle)}</b>: ${esc(e.title)} · ${e.distanceKm} km</li>`).join('') + '</ul>' : '<p class="mut">No active events nearby.</p>';
