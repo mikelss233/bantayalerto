@@ -103,14 +103,18 @@ function seedAdmin(db) {
 }
 
 function seedDemoCenters(db) {
-  if (db.prepare('SELECT COUNT(*) c FROM centers').get().c) return;
+  const exists = db.prepare('SELECT 1 FROM centers WHERE name = ?');
   const ins = db.prepare('INSERT INTO centers (name, address, lat, lon, capacity, occupancy, contact, status) VALUES (?,?,?,?,?,?,?,?)');
   [
     ['Quezon City Hall Gymnasium', 'Elliptical Rd, Diliman, Quezon City', 14.6507, 121.0494, 600, 0, '8988-4242', 'open'],
     ['Marikina Sports Center', 'Shoe Ave, Sto. Niño, Marikina', 14.6339, 121.0959, 900, 120, '8646-2360', 'open'],
     ['Cainta Municipal Covered Court', 'Ortigas Ave Ext, Cainta, Rizal', 14.5786, 121.1222, 400, 400, '8655-1111', 'full'],
     ['Pasig City Evacuation Hub', 'Caruncho Ave, Pasig', 14.5764, 121.0851, 500, 0, '8643-1111', 'open'],
-  ].forEach((r) => ins.run(...r));
+    // Iligan City demo centers - placeholders; admins can edit them to the real barangay sites.
+    ['Iligan City Hall Gymnasium', 'City Hall area, Iligan City, Lanao del Norte', 8.2290, 124.2420, 700, 0, '', 'open'],
+    ['Iligan Sports Complex', 'Iligan City, Lanao del Norte', 8.2315, 124.2575, 1000, 150, '', 'open'],
+    ['Tubod Covered Court', 'Tubod, Iligan City, Lanao del Norte', 8.2180, 124.2310, 350, 0, '', 'open'],
+  ].forEach((r) => { if (!exists.get(r[0])) ins.run(...r); });
 }
 
 module.exports = { openDb, seedAdmin, seedDemoCenters, seedChecklist, DEFAULT_CHECKLIST };

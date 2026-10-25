@@ -76,6 +76,8 @@ async function home() {
     <div class="card row" style="margin-bottom:14px">
       <input class="grow" id="q" placeholder="Search a place (e.g. Tacloban City)" value="">
       <button id="go">Search</button><button class="sec" id="gps">📍 Use my location</button>
+      <button class="sec" data-place="Manila" data-lat="14.5995" data-lon="120.9842">Manila</button>
+      <button class="sec" data-place="Iligan City" data-lat="8.2280" data-lon="124.2452">Iligan City</button>
     </div>
     <div class="grid g2"><div><div id="map"></div></div>
       <div class="grid"><div id="risk" class="card risk">Assessing…</div><div class="card" id="wx"></div></div></div>
@@ -117,7 +119,21 @@ async function home() {
     catch (e) { toast(e.message); }
   };
   $('#q').onkeydown = (e) => { if (e.key === 'Enter') $('#go').click(); };
-  $('#gps').onclick = () => navigator.geolocation?.getCurrentPosition((p) => { pos = { lat: p.coords.latitude, lon: p.coords.longitude, label: 'My location' }; load(); }, () => toast('Location permission denied'));
+  $('#gps').onclick = () => {
+    if (!navigator.geolocation) return toast('Your browser does not support location');
+    const btn = $('#gps'); btn.disabled = true; btn.textContent = 'Locating…';
+    const done = () => { btn.disabled = false; btn.textContent = '📍 Use my location'; };
+    navigator.geolocation.getCurrentPosition(async (p) => {
+      pos = { lat: p.coords.latitude, lon: p.coords.longitude, label: 'My location' };
+      try { const r = await api(`/external/reverse?lat=${pos.lat}&lon=${pos.lon}`); if (r.label) pos.label = r.label; } catch { /* keep generic label */ }
+      done(); load();
+    }, (err) => {
+      done();
+      toast(err.code === 1 ? 'Location blocked. Allow it in the browser address bar, or search a place instead.'
+        : err.code === 3 ? 'Location timed out. Try again or search a place.' : 'Could not determine your location. Search a place instead.');
+    }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 });
+  };
+  document.querySelectorAll('[data-place]').forEach((b) => { b.onclick = () => { pos = { lat: +b.dataset.lat, lon: +b.dataset.lon, label: b.dataset.place }; load(); }; });
   load();
 }
 
