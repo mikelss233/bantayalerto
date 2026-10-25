@@ -16,10 +16,12 @@ function createApp(db) {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", 'https://cdn.jsdelivr.net'],
         styleSrc: ["'self'", "'unsafe-inline'", 'https://cdn.jsdelivr.net'],
-        imgSrc: ["'self'", 'data:', 'https://*.tile.openstreetmap.org', 'https://cdn.jsdelivr.net'],
+        imgSrc: ["'self'", 'data:', 'https://tile.openstreetmap.org', 'https://*.tile.openstreetmap.org','https://cdn.jsdelivr.net'],
         connectSrc: ["'self'"],
       },
     },
+    // OSM's tile policy blocks requests without a Referer; helmet's default is no-referrer
+    referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
   }));
   app.use(express.json({ limit: '100kb' }));
   app.use(cookieParser());
