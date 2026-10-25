@@ -25,7 +25,7 @@ module.exports = (db) => {
     let lat = num(req.body.lat), lon = num(req.body.lon);
     if (!validCoords(lat, lon)) {
       lat = lon = null;
-      if (city) { const g = await tryGeocode(city + ', Philippines'); if (g) ({ lat, lon } = g); }
+      if (city) { const g = await tryGeocode(city, { preferPlaces: true }); if (g) ({ lat, lon } = g); }
     }
     // Self-registration is ALWAYS role "user"; admins are seeded or promoted by an existing admin.
     const info = db.prepare('INSERT INTO users (name, email, password_hash, role, phone, city, lat, lon) VALUES (?,?,?,?,?,?,?,?)')
@@ -52,7 +52,7 @@ module.exports = (db) => {
     const city = str(req.body.city, 80);
     if (phone && !/^(\+?63|0)9\d{9}$/.test(phone.replace(/[\s-]/g, ''))) throw new HttpError(400, 'Use a valid PH mobile number');
     let { lat, lon } = req.user;
-    if (city && city !== req.user.city) { const g = await tryGeocode(city + ', Philippines'); if (g) ({ lat, lon } = g); }
+    if (city && city !== req.user.city) { const g = await tryGeocode(city, { preferPlaces: true }); if (g) ({ lat, lon } = g); }
     db.prepare('UPDATE users SET name=?, phone=?, city=?, lat=?, lon=? WHERE id=?').run(name, phone || null, city || null, lat, lon, req.user.id);
     res.json({ user: db.prepare('SELECT id, name, email, role, phone, city, lat, lon FROM users WHERE id = ?').get(req.user.id) });
   });

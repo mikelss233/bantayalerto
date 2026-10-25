@@ -23,8 +23,8 @@ async function reverseGeocode(lat, lon) {
 }
 
 // Best-effort: never lets a geocoding failure block a save.
-async function tryGeocode(q) {
-  try { return (await geocode(q))[0] || null; } catch { return null; }
+async function tryGeocode(q, opts) {
+  try { return (await geocode(q, opts))[0] || null; } catch { return null; }
 }
 
 module.exports = { geocode, reverseGeocode, tryGeocode };

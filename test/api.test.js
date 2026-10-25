@@ -107,6 +107,25 @@ test('place search ranks cities above same-named streets; reverse geocode names 
   assert.strictEqual((await call('GET', '/api/external/reverse?lat=x&lon=1')).status, 400);
 });
 
+test('weather falls back to MET Norway when Open-Meteo is rate-limited', async () => {
+  const mocked = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (String(url).includes('open-meteo')) return { ok: false, status: 429, json: async () => ({}) };
+    if (String(url).includes('api.met.no')) return { ok: true, status: 200, json: async () => ({ properties: { timeseries: [
+      { time: '2026-10-25T00:00:00Z', data: { instant: { details: { air_temperature: 27, relative_humidity: 90, wind_speed: 10 } }, next_1_hours: { summary: { symbol_code: 'heavyrainandthunder' }, details: { precipitation_amount: 12 } } } },
+    ] } }) };
+    return mocked(url, opts);
+  };
+  clearCache();
+  try {
+    const r = await call('GET', '/api/external/weather?lat=8.23&lon=124.25');
+    assert.strictEqual(r.status, 200);
+    assert.strictEqual(r.body.source, 'MET Norway');
+    assert.strictEqual(r.body.windSpeed, 36);
+    assert.strictEqual(r.body.code, 95);
+  } finally { global.fetch = mocked; clearCache(); }
+});
+
 test('alert broadcast and admin dashboard stats incl. API health', async () => {
   const a = await call('POST', '/api/admin/alerts', { title: 'Typhoon', message: 'Stay safe', level: 'warning' }, adminCookie);
   assert.strictEqual(a.status, 201);
@@ -114,6 +133,15 @@ test('alert broadcast and admin dashboard stats incl. API health', async () => {
   const s = await call('GET', '/api/admin/stats', null, adminCookie);
   assert.ok(s.body.apiHealth.length >= 3);
   assert.ok((await call('GET', '/api/admin/alerts', null, userCookie)).body.length === 1);
+});
+
+test('alert targeting treats "Iligan" and "Iligan City" as the same city', async () => {
+  const c = (await call('POST', '/api/auth/register', { name: 'Iligan Resident', email: 'iligan@example.com', password: 'Iligan12345', city: 'Iligan City' })).cookie;
+  assert.ok(c);
+  const admin = (await call('POST', '/api/auth/login', { email: 'admin@bantay.local', password: 'Admin123!' })).cookie;
+  const r = await call('POST', '/api/admin/alerts', { title: 'Flood watch', message: 'Monitor river levels', level: 'watch', city: 'iligan' }, admin);
+  assert.strictEqual(r.status, 201);
+  assert.ok(r.body.recipients >= 1);
 });
 
 test('checklist is seeded and togglable', async () => {

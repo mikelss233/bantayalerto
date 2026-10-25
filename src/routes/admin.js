@@ -65,9 +65,10 @@ module.exports = (db) => {
     const level = LEVELS.includes(req.body.level) ? req.body.level : 'advisory';
     const city = str(req.body.city, 80);
     if (!title || !message) throw new HttpError(400, 'Title and message are required');
-    const users = city
-      ? db.prepare("SELECT email, phone FROM users WHERE role='user' AND lower(city) = lower(?)").all(city)
-      : db.prepare("SELECT email, phone FROM users WHERE role='user'").all();
+    // "Iligan", "Iligan City" and "City of Iligan" all target the same residents.
+    const norm = (c) => String(c || '').toLowerCase().replace(/\b(city|of)\b/g, '').replace(/[^a-z]/g, '');
+    const all = db.prepare("SELECT email, phone, city FROM users WHERE role='user'").all();
+    const users = city ? all.filter((u) => norm(u.city) === norm(city)) : all;
     const text = `[${level.toUpperCase()}] ${title}: ${message}`;
     const delivery = await Promise.all([
       sendSms(users.map((u) => u.phone).filter(Boolean), text),
