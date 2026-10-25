@@ -13,7 +13,7 @@ location, points residents to the nearest open evacuation center, and gives admi
 | 1 | Open-Meteo (fallback: MET Norway) | Current weather + 3-day forecast, weather snapshot on each report | No |
 | 2 | USGS Earthquake Catalog | Recent earthquakes near a location | No |
 | 3 | NASA EONET | Active storms, floods, volcanoes | No |
-| 4 | Nominatim (OpenStreetMap) | Place search (PH), reverse geocoding for "Use my location", user cities and center addresses | No |
+| 4 | Nominatim (OpenStreetMap; fallback: Photon) | Place search (PH), reverse geocoding for "Use my location", user cities and center addresses | No |
 | 5 | Leaflet + OpenStreetMap tiles | Interactive hazard map | No |
 | 6 | Semaphore SMS / Resend email | Alert broadcasts to users | Optional (simulated if absent) |
 

@@ -126,6 +126,27 @@ test('weather falls back to MET Norway when Open-Meteo is rate-limited', async (
   } finally { global.fetch = mocked; clearCache(); }
 });
 
+test('geocoding falls back to Photon when Nominatim is rate-limited', async () => {
+  const mocked = global.fetch;
+  global.fetch = async (url, opts) => {
+    if (String(url).includes('nominatim')) return { ok: false, status: 429, json: async () => ({}) };
+    if (String(url).includes('photon.komoot.io/api')) return { ok: true, status: 200, json: async () => ({ features: [
+      { properties: { countrycode: 'PH', type: 'locality', name: 'Iligan', state: 'Negros Occidental' }, geometry: { coordinates: [123.42, 10.44] } },
+      { properties: { countrycode: 'PH', type: 'city', name: 'Iligan', state: 'Northern Mindanao' }, geometry: { coordinates: [124.24, 8.228] } },
+    ] }) };
+    if (String(url).includes('photon.komoot.io/reverse')) return { ok: true, status: 200, json: async () => ({ features: [{ properties: { city: 'Iligan', state: 'Northern Mindanao' } }] }) };
+    return mocked(url, opts);
+  };
+  clearCache();
+  try {
+    const g = await call('GET', '/api/external/geocode?q=Iligan%20City');
+    assert.strictEqual(g.status, 200);
+    assert.strictEqual(g.body[0].lat, 8.228);
+    assert.match(g.body[0].label, /Northern Mindanao/);
+    assert.strictEqual((await call('GET', '/api/external/reverse?lat=8.2&lon=124.2')).body.label, 'Iligan, Northern Mindanao');
+  } finally { global.fetch = mocked; clearCache(); }
+});
+
 test('alert broadcast and admin dashboard stats incl. API health', async () => {
   const a = await call('POST', '/api/admin/alerts', { title: 'Typhoon', message: 'Stay safe', level: 'warning' }, adminCookie);
   assert.strictEqual(a.status, 201);
