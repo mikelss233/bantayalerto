@@ -26,7 +26,8 @@ location, points residents to the nearest open evacuation center, and gives admi
 
 ## Innovation / technical notes
 - `src/services/risk.js` – pure, unit-tested scoring engine (rain, wind, nearby quakes, NASA events → Low/Moderate/High/Critical with reasons)
-- Shared HTTP helper: timeouts, TTL cache, stale-on-error fallback, per-call logging → graceful degradation if an API is down
+- Shared HTTP helper: timeouts, TTL cache, stale-on-error fallback, 60 s circuit breaker, per-call logging → graceful degradation if an API is down
+- Provider fallbacks: Open-Meteo → MET Norway, Nominatim → Photon (both rate-limit shared cloud IPs such as Render's)
 - Parameterized SQL, output escaping, helmet CSP, rate limiting, server-side validation and ownership checks
 
 ## Run locally
@@ -43,5 +44,49 @@ Push to GitHub → Render → New Web Service (uses `render.yaml`). Set `ADMIN_P
 Note: Render's free tier has an ephemeral disk, so the SQLite file resets on redeploy; for permanent data
 add a Render disk, or swap `src/db.js` to Postgres/Supabase.
 
-## Structure
-`src/routes/*` REST endpoints · `src/services/*` API clients + risk engine · `public/` SPA frontend · `test/` tests
+## Where to find things
+```
+bantay-alerto/
+├── src/                      Backend (Node.js + Express)
+│   ├── server.js             Start here: opens the DB, seeds admin + demo centers, starts the server
+│   ├── app.js                Middleware order, security headers, mounts every route
+│   ├── db.js                 Database tables, admin seeding, demo centers
+│   ├── auth.js               Login cookie (JWT), requireAuth / requireAdmin
+│   ├── util.js               Small helpers (distance, input cleaning, HttpError)
+│   ├── routes/               One file per URL group (/api/...)
+│   │   ├── auth.js           register, login, logout, me, profile
+│   │   ├── reports.js        incident reports CRUD
+│   │   ├── centers.js        evacuation centers CRUD
+│   │   ├── checklist.js      preparedness checklist
+│   │   ├── admin.js          dashboard stats, users, alerts
+│   │   └── external.js       weather, quakes, events, geocode, reverse, /risk
+│   └── services/             One file per outside API + the risk engine
+│       ├── http.js           fetchJson: timeout, cache, circuit breaker, logging
+│       ├── weather.js        Open-Meteo (fallback MET Norway)
+│       ├── quakes.js         USGS Earthquake
+│       ├── eonet.js          NASA EONET
+│       ├── geocode.js        Nominatim (fallback Photon)
+│       ├── notify.js         Semaphore SMS + Resend email
+│       └── risk.js           risk score rules
+├── public/                   Frontend (no build step)
+│   ├── index.html            the one page
+│   ├── css/style.css         all styling
+│   └── js/
+│       ├── main.js           entry point
+│       ├── router.js         #/ routes, nav bar, login/admin guards
+│       ├── core.js           shared helpers: api(), toast(), esc(), app state
+│       └── pages/            one file per screen
+│           ├── map.js        Live hazard map (#/)
+│           ├── auth.js       Login / Register
+│           ├── reports.js    Incident reports
+│           ├── centers.js    Evacuation centers
+│           ├── checklist.js  Checklist
+│           ├── alerts.js     Alerts
+│           ├── dashboard.js  Admin dashboard
+│           └── users.js      User management
+├── test/                     npm test (api.test.js, risk.test.js)
+├── docs/                     System documentation (.docx) + screenshots
+└── render.yaml               Render deployment
+```
+
+**Rule of thumb:** a screen → `public/js/pages/`; an `/api/...` URL → `src/routes/`; anything that talks to an outside API → `src/services/`.
