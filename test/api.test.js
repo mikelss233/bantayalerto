@@ -178,5 +178,12 @@ test('external API failure degrades gracefully', async () => {
   const r = await call('GET', '/api/external/risk?lat=10&lon=123');
   assert.strictEqual(r.status, 200);
   assert.deepStrictEqual(r.body.sources, { weather: false, quakes: false, events: false });
+  // Circuit breaker: within the cooldown the failing services are skipped, not called again.
+  let calls = 0;
+  global.fetch = async (url, o) => { if (!/127\.0\.0\.1/.test(String(url))) calls++; return /127\.0\.0\.1/.test(String(url)) ? realFetch(url, o) : { ok: false, status: 503, json: async () => ({}) }; };
+  const again = await call('GET', '/api/external/risk?lat=11&lon=124');
+  assert.strictEqual(again.status, 200);
+  assert.strictEqual(calls, 0, 'failed services are skipped during the cooldown');
   global.fetch = prev;
+  clearCache();
 });
